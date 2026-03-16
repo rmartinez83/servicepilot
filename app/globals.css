@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* ServicePilot brand and UI palette */
+:root {
+  --background: #ffffff;
+  --foreground: #1E293B;
+  --page-bg: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --border: #E2E8F0;
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --dark: #1E293B;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-page-bg: var(--page-bg);
+  --color-card-bg: var(--card-bg);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-dark: var(--dark);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--page-bg);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
