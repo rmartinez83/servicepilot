@@ -120,9 +120,7 @@ export default function BillingPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-[var(--dark)]">Current plan</h2>
-        </CardHeader>
+      <CardHeader title="Current plan" />
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
