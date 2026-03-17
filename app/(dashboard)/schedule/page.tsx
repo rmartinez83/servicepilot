@@ -2,11 +2,13 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { CustomerCombobox } from "@/components/CustomerCombobox";
 import { JobStatusBadge } from "@/components/StatusBadge";
 import {
   formatDate,
   formatPhoneNumber,
   formatScheduledDateTime,
+  formatScheduledTime,
   getCustomers,
   getTechnicians,
 } from "@/lib/data";
@@ -15,8 +17,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { withReturnTo } from "@/lib/returnTo";
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
-import { Calendar, CheckCircle, Clock, Plus, Search, UserX, Wrench } from "lucide-react";
+import { Calendar, CalendarClock, CheckCircle, Clock, ExternalLink, Plus, Search, UserPlus, UserX, Wrench, CalendarPlus } from "lucide-react";
 import type { Job } from "@/lib/models";
+import type { Technician } from "@/lib/models";
 
 type DateFilter = "today" | "tomorrow" | "week";
 
@@ -109,11 +112,78 @@ function toYmdOnly(value: string | undefined | null): string {
 
 const DRAG_TYPE = "application/x-servicepilot-job";
 
+/** Working hours: 8:00 AM–5:00 PM (minutes from midnight). */
+const WORK_START_MIN = 8 * 60;
+const WORK_END_MIN = 17 * 60;
+const SLOT_DURATION_MIN = 120; // 2-hour default for HVAC-style scheduling
+
+/** Parse "09:00" or "14:30" to minutes from midnight. Returns null if missing/invalid. */
+function timeStrToMinutes(timeStr: string | undefined | null): number | null {
+  if (!timeStr || !/^\d{1,2}:\d{2}/.test(timeStr.trim())) return null;
+  const [h, m] = timeStr.trim().split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return Math.min(24 * 60 - 1, Math.max(0, h * 60 + m));
+}
+
+/** Minutes to "HH:mm" (e.g. 540 -> "09:00"). */
+function minutesToTimeStr(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * Compute open slot start times (as "HH:mm") for a technician on the selected day.
+ * Assumes each job blocks 1 hour from its scheduled start. Working hours 8 AM–5 PM.
+ */
+function getOpenSlotsForDay(
+  jobsOnDay: Job[],
+  workStartMin: number = WORK_START_MIN,
+  workEndMin: number = WORK_END_MIN,
+  slotDurationMin: number = SLOT_DURATION_MIN
+): string[] {
+  const blocked: number[] = [];
+  jobsOnDay.forEach((j) => {
+    const start = timeStrToMinutes(j.scheduledTime ?? null);
+    if (start != null) blocked.push(start);
+  });
+  blocked.sort((a, b) => a - b);
+
+  const out: string[] = [];
+  for (let s = workStartMin; s + slotDurationMin <= workEndMin; s += slotDurationMin) {
+    const slotEnd = s + slotDurationMin;
+    const overlaps = blocked.some((jobStart) => jobStart < slotEnd && jobStart + slotDurationMin > s);
+    if (!overlaps) out.push(minutesToTimeStr(s));
+  }
+  return out;
+}
+
+export type ColumnItem =
+  | { type: "job"; sortKey: string; job: Job }
+  | { type: "slot"; sortKey: string; startTime: string };
+
+/** Build sorted list of job cards + open slots for one technician on the selected day. */
+function buildColumnItems(
+  techJobs: Job[],
+  openSlots: string[],
+  timeSortKeyFn: (j: Job) => string
+): ColumnItem[] {
+  const items: ColumnItem[] = [];
+  techJobs.forEach((j) => {
+    items.push({ type: "job", sortKey: timeSortKeyFn(j), job: j });
+  });
+  openSlots.forEach((t) => {
+    items.push({ type: "slot", sortKey: t, startTime: t });
+  });
+  items.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  return items;
+}
+
 export default function SchedulePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filterTechnicianId = searchParams.get("technicianId");
-  const { jobs, loading: jobsLoading, updateJob } = useJobs();
+  const { jobs, loading: jobsLoading, updateJob, addJob } = useJobs();
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof getCustomers>>>([]);
   const [allTechnicians, setAllTechnicians] = useState<Awaited<ReturnType<typeof getTechnicians>>>([]);
   const [filter, setFilter] = useState<DateFilter>("today");
@@ -123,6 +193,12 @@ export default function SchedulePage() {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [draggingJobId, setDraggingJobId] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [scheduleSlotModal, setScheduleSlotModal] = useState<{
+    technicianId: string;
+    technicianName: string;
+    date: string;
+    startTime: string;
+  } | null>(null);
 
   useEffect(() => {
     setScheduleTechnicianId((prev) => filterTechnicianId ?? prev ?? "");
@@ -229,6 +305,45 @@ export default function SchedulePage() {
     );
     return map;
   }, [filteredJobs, technicians]);
+
+  /** Jobs on the selected date only (for availability board + open slots). */
+  const jobsForSelectedDay = useMemo(() => {
+    const ymd = referenceDateStr.slice(0, 10);
+    return jobs.filter((j) => (j.scheduledDate || "").slice(0, 10) === ymd);
+  }, [jobs, referenceDateStr]);
+
+  /** Per-technician jobs on the selected day (for columns + open slot calc). */
+  const jobsByTechnicianForSelectedDay = useMemo(() => {
+    const map = new Map<string, Job[]>();
+    technicians.forEach((t) => map.set(t.id, []));
+    jobsForSelectedDay.forEach((j) => {
+      const tid = j.technicianId;
+      if (tid != null && String(tid).trim() !== "" && map.has(tid)) {
+        map.get(tid)!.push(j);
+      }
+    });
+    map.forEach((list) =>
+      list.sort(
+        (a, b) =>
+          timeSortKey(a).localeCompare(timeSortKey(b)) ||
+          (a.scheduledDate || "").localeCompare(b.scheduledDate || "") ||
+          a.id.localeCompare(b.id)
+      )
+    );
+    return map;
+  }, [jobsForSelectedDay, technicians]);
+
+  /** In-progress jobs in the current date range (for dedicated section). */
+  const inProgressJobs = useMemo(() => {
+    return filteredJobs
+      .filter((j) => j.status === "in_progress")
+      .sort(
+        (a, b) =>
+          (a.scheduledDate || "").localeCompare(b.scheduledDate || "") ||
+          timeSortKey(a).localeCompare(timeSortKey(b)) ||
+          a.id.localeCompare(b.id)
+      );
+  }, [filteredJobs]);
 
   const summary = useMemo(() => {
     const refDateJobs = filteredJobs.filter((j) => {
@@ -392,7 +507,7 @@ export default function SchedulePage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
@@ -447,16 +562,49 @@ export default function SchedulePage() {
         </Card>
       </div>
 
-      {/* Dispatch Board — technician columns (above Unassigned) */}
+      {/* In progress — grouped section */}
+      {inProgressJobs.length > 0 && (
+        <Card>
+          <CardHeader
+            title="In progress"
+            subtitle={`${inProgressJobs.length} job${inProgressJobs.length !== 1 ? "s" : ""} currently in progress`}
+          />
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {inProgressJobs.map((job) => (
+                <DispatchJobCard
+                  key={job.id}
+                  job={job}
+                  customerName={job.customerName ?? customerById.get(job.customerId)?.name ?? "—"}
+                  customerPhone={customerById.get(job.customerId)?.phone}
+                  technicianName={job.technicianId ? technicianById.get(job.technicianId)?.name ?? null : null}
+                  allTechnicians={allTechnicians}
+                  onSelect={() => router.push(`/jobs/${job.id}?returnTo=/schedule`)}
+                  onAssign={(jobId, technicianId) => handleDrop(jobId, technicianId)}
+                  onDragStart={() => setDraggingJobId(job.id)}
+                  onDragEnd={() => setDraggingJobId(null)}
+                  isDragging={draggingJobId === job.id}
+                  dragType={DRAG_TYPE}
+                  showUnassignedBadge={false}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Dispatch Board — technician columns (selected day: jobs + open slots) */}
       <Card>
         <CardHeader
-          title="Dispatch Board"
-          subtitle={`${activeRangeLabel} · Drag jobs between columns to assign or reassign technicians`}
+          title="Technician availability"
+          subtitle={`${formatDate(referenceDateStr)} · Jobs and open slots; click an open slot to schedule`}
         />
         <CardContent className="p-0">
-          <div className="flex gap-4 overflow-x-auto px-4 pb-4 pt-1">
+          <div className="flex gap-3 overflow-x-auto px-4 pb-4 pt-1 sm:gap-4">
             {technicians.map((tech) => {
-              const techJobs = jobsByTechnician.get(tech.id) ?? [];
+              const techJobs = jobsByTechnicianForSelectedDay.get(tech.id) ?? [];
+              const openSlots = getOpenSlotsForDay(techJobs);
+              const columnItems = buildColumnItems(techJobs, openSlots, timeSortKey);
               const isDropTarget = dropTarget === tech.id;
               return (
                 <div
@@ -472,7 +620,7 @@ export default function SchedulePage() {
                     const jobId = e.dataTransfer.getData(DRAG_TYPE);
                     if (jobId) handleDrop(jobId, tech.id);
                   }}
-                  className={`flex w-72 shrink-0 flex-col rounded-[10px] border bg-white p-4 shadow-sm transition-colors ${
+                  className={`flex w-[min(72vw,320px)] shrink-0 flex-col rounded-[10px] border bg-card-bg p-3 shadow-sm transition-colors sm:w-72 sm:p-4 ${
                     isDropTarget
                       ? "border-primary bg-primary/5 ring-2 ring-primary/20"
                       : "border-[var(--border)]"
@@ -482,25 +630,48 @@ export default function SchedulePage() {
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-[var(--dark)]">{tech.name}</p>
                       <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                        {techJobs.length}
+                        {techJobs.length} job{techJobs.length !== 1 ? "s" : ""}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500">{tech.specialty}</p>
                   </div>
-                  <div className="flex min-h-[100px] flex-col gap-2">
-                    {techJobs.map((job) => (
-                      <DispatchJobCard
-                        key={job.id}
-                        job={job}
-                        customerName={job.customerName ?? customerById.get(job.customerId)?.name ?? "—"}
-                        customerPhone={customerById.get(job.customerId)?.phone}
-                        onSelect={() => router.push(`/jobs/${job.id}?returnTo=/schedule`)}
-                        onDragStart={() => setDraggingJobId(job.id)}
-                        onDragEnd={() => setDraggingJobId(null)}
-                        isDragging={draggingJobId === job.id}
-                        dragType={DRAG_TYPE}
-                      />
-                    ))}
+                  <div className="flex min-h-[80px] flex-col gap-2">
+                    {columnItems.map((item) =>
+                      item.type === "job" ? (
+                        <DispatchJobCard
+                          key={item.job.id}
+                          job={item.job}
+                          customerName={item.job.customerName ?? customerById.get(item.job.customerId)?.name ?? "—"}
+                          customerPhone={customerById.get(item.job.customerId)?.phone}
+                          technicianName={tech.name}
+                          allTechnicians={allTechnicians}
+                          onSelect={() => router.push(`/jobs/${item.job.id}?returnTo=/schedule`)}
+                          onAssign={(jobId, technicianId) => handleDrop(jobId, technicianId)}
+                          onDragStart={() => setDraggingJobId(item.job.id)}
+                          onDragEnd={() => setDraggingJobId(null)}
+                          isDragging={draggingJobId === item.job.id}
+                          dragType={DRAG_TYPE}
+                          showUnassignedBadge={false}
+                        />
+                      ) : (
+                        <button
+                          key={`slot-${item.startTime}`}
+                          type="button"
+                          onClick={() =>
+                            setScheduleSlotModal({
+                              technicianId: tech.id,
+                              technicianName: tech.name,
+                              date: referenceDateStr.slice(0, 10),
+                              startTime: item.startTime,
+                            })
+                          }
+                          className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-300 bg-emerald-50/80 py-2.5 text-sm font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100/80 hover:text-emerald-900"
+                        >
+                          <CalendarPlus className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                          Open · {formatScheduledTime(item.startTime)}
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               );
@@ -512,17 +683,17 @@ export default function SchedulePage() {
         </CardContent>
       </Card>
 
-      {/* Unassigned Jobs */}
+      {/* Unassigned Jobs — visually distinct */}
       <Card>
         <CardHeader
-          title="Unassigned Jobs"
+          title="Unassigned"
           subtitle={
             unassignedJobs.length === 0
               ? "Jobs without a technician — drag from here or from a column to assign"
-              : `${unassignedJobs.length} job${unassignedJobs.length !== 1 ? "s" : ""} need assignment — drag to a technician column`
+              : `${unassignedJobs.length} job${unassignedJobs.length !== 1 ? "s" : ""} need assignment`
           }
         />
-        <CardContent>
+        <CardContent className="pt-0">
           {unassignedJobs.length === 0 ? (
             <div
               onDragOver={(e) => {
@@ -536,14 +707,14 @@ export default function SchedulePage() {
                 const jobId = e.dataTransfer.getData(DRAG_TYPE);
                 if (jobId) handleDrop(jobId, null);
               }}
-              className={`min-h-[120px] rounded-[10px] border-2 border-dashed p-6 transition-colors ${
+              className={`min-h-[120px] rounded-[10px] border-2 border-dashed p-4 sm:p-6 transition-colors ${
                 dropTarget === "unassigned"
                   ? "border-primary bg-primary/5"
-                  : "border-[var(--border)] bg-slate-50/50"
+                  : "border-amber-300 bg-amber-50/50"
               }`}
             >
               <p className="py-4 text-center text-sm text-slate-500">
-                No unassigned jobs in this range. Assign new jobs by dragging them here from the board, or schedule a job and assign a technician.
+                No unassigned jobs in this range. Drag jobs here to unassign, or schedule a new job.
               </p>
             </div>
           ) : (
@@ -559,8 +730,8 @@ export default function SchedulePage() {
                 const jobId = e.dataTransfer.getData(DRAG_TYPE);
                 if (jobId) handleDrop(jobId, null);
               }}
-              className={`grid gap-3 rounded-[10px] border border-[var(--border)] bg-amber-50/30 p-4 sm:grid-cols-2 lg:grid-cols-3 ${
-                dropTarget === "unassigned" ? "ring-2 ring-amber-200" : ""
+              className={`grid gap-3 rounded-[10px] border-2 border-amber-200 bg-amber-50/60 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 ${
+                dropTarget === "unassigned" ? "ring-2 ring-amber-400" : ""
               }`}
             >
               {unassignedJobs.map((job) => (
@@ -569,11 +740,15 @@ export default function SchedulePage() {
                   job={job}
                   customerName={job.customerName ?? customerById.get(job.customerId)?.name ?? "—"}
                   customerPhone={customerById.get(job.customerId)?.phone}
+                  technicianName={null}
+                  allTechnicians={allTechnicians}
                   onSelect={() => router.push(`/jobs/${job.id}?returnTo=/schedule`)}
+                  onAssign={(jobId, technicianId) => handleDrop(jobId, technicianId)}
                   onDragStart={() => setDraggingJobId(job.id)}
                   onDragEnd={() => setDraggingJobId(null)}
                   isDragging={draggingJobId === job.id}
                   dragType={DRAG_TYPE}
+                  showUnassignedBadge={true}
                 />
               ))}
             </div>
@@ -599,6 +774,138 @@ export default function SchedulePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Quick schedule — open slot modal */}
+      {scheduleSlotModal && (
+        <ScheduleSlotModal
+          technicianId={scheduleSlotModal.technicianId}
+          technicianName={scheduleSlotModal.technicianName}
+          date={scheduleSlotModal.date}
+          startTime={scheduleSlotModal.startTime}
+          customers={customers}
+          onClose={() => setScheduleSlotModal(null)}
+          onSave={async (payload) => {
+            await addJob(payload);
+            setScheduleSlotModal(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ScheduleSlotModal({
+  technicianId,
+  technicianName,
+  date,
+  startTime,
+  customers,
+  onClose,
+  onSave,
+}: {
+  technicianId: string;
+  technicianName: string;
+  date: string;
+  startTime: string;
+  customers: Awaited<ReturnType<typeof getCustomers>>;
+  onClose: () => void;
+  onSave: (payload: {
+    customerId: string;
+    technicianId: string;
+    title: string;
+    description: string;
+    scheduledDate: string;
+    scheduledTime: string;
+    status: "scheduled";
+    price: number;
+  }) => Promise<void>;
+}) {
+  const [customerId, setCustomerId] = useState("");
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSubmit = Boolean(customerId?.trim() && title?.trim());
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setError(null);
+    setSaving(true);
+    try {
+      await onSave({
+        customerId: customerId.trim(),
+        technicianId,
+        title: title.trim(),
+        description: "",
+        scheduledDate: date,
+        scheduledTime: startTime,
+        status: "scheduled",
+        price: 0,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="schedule-slot-modal-title"
+    >
+      <div
+        className="w-full max-w-md rounded-[10px] border border-[var(--border)] bg-card-bg p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="schedule-slot-modal-title" className="text-lg font-semibold text-[var(--dark)]">
+          Schedule in open slot
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {technicianName} · {formatDate(date)} · {formatScheduledTime(startTime)}
+        </p>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div>
+            <label htmlFor="schedule-slot-customer" className="mb-1 block text-sm font-medium text-[var(--dark)]">
+              Customer
+            </label>
+            <CustomerCombobox
+              customers={customers}
+              value={customerId}
+              onChange={setCustomerId}
+              placeholder="Search by name, phone, or email..."
+            />
+          </div>
+          <div>
+            <label htmlFor="schedule-slot-title" className="mb-1 block text-sm font-medium text-[var(--dark)]">
+              Job title
+            </label>
+            <input
+              id="schedule-slot-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. HVAC tune-up"
+              className="h-9 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--dark)] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          {error && (
+            <p className="text-sm text-red-600" role="alert">{error}</p>
+          )}
+          <div className="flex gap-2 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!canSubmit || saving}>
+              {saving ? "Saving…" : "Schedule job"}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -607,23 +914,33 @@ function DispatchJobCard({
   job,
   customerName,
   customerPhone,
+  technicianName,
+  allTechnicians,
   onSelect,
+  onAssign,
   onDragStart,
   onDragEnd,
   isDragging,
   dragType,
+  showUnassignedBadge,
 }: {
   job: Job;
   customerName: string;
   customerPhone?: string | null;
+  technicianName?: string | null;
+  allTechnicians: Technician[];
   onSelect: () => void;
+  onAssign: (jobId: string, technicianId: string | null) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   isDragging: boolean;
   dragType: string;
+  showUnassignedBadge: boolean;
 }) {
   const justDragged = useRef(false);
   const phoneStr = customerPhone ? formatPhoneNumber(customerPhone) : null;
+  const isUnassigned = showUnassignedBadge || !technicianName;
+
   return (
     <div
       draggable
@@ -641,22 +958,71 @@ function DispatchJobCard({
       onClick={() => {
         if (!justDragged.current) onSelect();
       }}
-      className={`cursor-grab rounded-[10px] border border-[var(--border)] bg-white p-3 text-left shadow-sm transition-colors active:cursor-grabbing hover:border-primary/40 hover:shadow ${
-        isDragging ? "opacity-50" : ""
-      }`}
+      className={`cursor-grab rounded-[10px] border-l-4 border-[var(--border)] bg-white p-3 text-left shadow-sm transition-colors active:cursor-grabbing hover:border-primary/40 hover:shadow sm:p-3.5 ${
+        isUnassigned ? "border-l-amber-400 bg-amber-50/40" : ""
+      } ${isDragging ? "opacity-50" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
+      {/* Date/time — prominent */}
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-[var(--dark)]">
+        <CalendarClock className="h-4 w-4 shrink-0 text-primary" />
+        {formatScheduledDateTime(job.scheduledDate, job.scheduledTime)}
+      </p>
+
+      <div className="mt-2 flex items-start justify-between gap-2">
         <span className="font-medium text-[var(--dark)]">{customerName}</span>
         <JobStatusBadge status={job.status} />
       </div>
-      <p className="mt-1 text-sm text-slate-600">{job.title}</p>
-      <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-        <Calendar className="h-3.5 w-3.5 shrink-0" />
-        {formatScheduledDateTime(job.scheduledDate, job.scheduledTime)}
-      </p>
+      <p className="mt-0.5 text-sm text-slate-600">{job.title}</p>
+
+      {/* Technician or Unassigned */}
+      <div className="mt-2 flex items-center gap-1.5">
+        {technicianName ? (
+          <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <Wrench className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+            {technicianName}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+            <UserX className="h-3.5 w-3.5 shrink-0" />
+            Unassigned
+          </span>
+        )}
+      </div>
+
       {phoneStr && (
         <p className="mt-1 text-xs text-slate-500">{phoneStr}</p>
       )}
+
+      {/* Quick actions */}
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); onSelect(); }}
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Open
+        </button>
+        <select
+          value={job.technicianId ?? ""}
+          onChange={(e) => onAssign(job.id, e.target.value || null)}
+          className="h-7 min-w-0 max-w-[140px] rounded border border-[var(--border)] bg-white px-2 text-xs text-[var(--dark)] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <option value="">Assign…</option>
+          {allTechnicians.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+        <Link
+          href={`/jobs/${job.id}/edit?returnTo=/schedule`}
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-[var(--dark)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Calendar className="h-3.5 w-3.5" />
+          Reschedule
+        </Link>
+      </div>
     </div>
   );
 }
