@@ -67,7 +67,7 @@ export default function EditInvoicePage() {
     }
     getInvoiceById(id)
       .then((inv) => {
-        setInvoice(inv ?? null);
+        setInvoice(inv ?? undefined);
         if (inv) {
           setStatus(inv.status as InvoiceStatus);
           setSubtotal(inv.subtotal);

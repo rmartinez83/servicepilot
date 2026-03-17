@@ -254,7 +254,7 @@ export async function POST(
   const pdfBytes = await doc.save();
   const filename = `${sanitizeFilename(invoiceNumber)}.pdf`;
 
-  return new Response(pdfBytes, {
+  return new Response(new Blob([pdfBytes as BlobPart]), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

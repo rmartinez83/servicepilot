@@ -40,7 +40,7 @@ export default function InvoiceDetailPage() {
       setInvoice(inv);
       if (!inv) return;
       return Promise.all([
-        getJobById(inv.jobId).then(setJob),
+        getJobById(inv.jobId).then((j) => setJob(j ?? null)),
         getCustomerById(inv.customerId).then((c) => setCustomer(c ?? null)),
       ]);
     });

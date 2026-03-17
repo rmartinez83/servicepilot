@@ -19,9 +19,9 @@ export function setCurrentCompanyId(companyId: string | null): void {
   _currentCompanyId = companyId;
 }
 
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
   return Promise.race([
-    p,
+    Promise.resolve(p),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Request timed out")), ms)
     ),

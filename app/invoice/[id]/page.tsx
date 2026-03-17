@@ -54,7 +54,7 @@ export default function PublicInvoicePage() {
     );
   }
 
-  if (error || data === null) {
+  if (error || data === null || data === undefined) {
     return (
       <div className="min-h-screen bg-slate-50/80 px-4 py-12">
         <div className="mx-auto max-w-lg">
@@ -68,6 +68,7 @@ export default function PublicInvoicePage() {
     );
   }
 
+  const invoice = data;
 
   return (
     <div className="min-h-screen bg-slate-50/80 px-4 py-12">
@@ -83,13 +84,13 @@ export default function PublicInvoicePage() {
 
         <Card>
           <CardHeader
-            title={data.invoiceNumber}
+            title={invoice.invoiceNumber}
             subtitle={
-              data.companyName ? `From: ${data.companyName}` : undefined
+              invoice.companyName ? `From: ${invoice.companyName}` : undefined
             }
           />
           <CardContent className="space-y-4">
-            {data.companyName && (
+            {invoice.companyName && (
               <div className="flex gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
                   <Building2 className="h-5 w-5" />
@@ -98,7 +99,7 @@ export default function PublicInvoicePage() {
                   <p className="text-xs font-medium uppercase text-slate-400">
                     Company
                   </p>
-                  <p className="font-medium text-slate-900">{data.companyName}</p>
+                  <p className="font-medium text-slate-900">{invoice.companyName}</p>
                 </div>
               </div>
             )}
@@ -111,7 +112,7 @@ export default function PublicInvoicePage() {
                   Invoice number
                 </p>
                 <p className="font-medium text-slate-900">
-                  {data.invoiceNumber}
+                  {invoice.invoiceNumber}
                 </p>
               </div>
             </div>
@@ -124,7 +125,7 @@ export default function PublicInvoicePage() {
                   Job
                 </p>
                 <p className="font-medium text-slate-900">
-                  {data.jobTitle || "—"}
+                  {invoice.jobTitle || "—"}
                 </p>
               </div>
             </div>
@@ -137,7 +138,7 @@ export default function PublicInvoicePage() {
                   Customer
                 </p>
                 <p className="font-medium text-slate-900">
-                  {data.customerName || "—"}
+                  {invoice.customerName || "—"}
                 </p>
               </div>
             </div>
@@ -150,7 +151,7 @@ export default function PublicInvoicePage() {
                   Total
                 </p>
                 <p className="text-lg font-semibold text-slate-900">
-                  ${data.total.toLocaleString()}
+                  ${invoice.total.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -162,7 +163,7 @@ export default function PublicInvoicePage() {
                 <p className="text-xs font-medium uppercase text-slate-400">
                   Status
                 </p>
-                <InvoiceStatusBadge status={data.status} />
+                <InvoiceStatusBadge status={invoice.status} />
               </div>
             </div>
           </CardContent>

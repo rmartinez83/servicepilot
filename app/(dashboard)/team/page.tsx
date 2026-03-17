@@ -156,12 +156,10 @@ export default function TeamPage() {
 
       {/* Invite form */}
       <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-[var(--dark)]">Invite by email</h2>
-          <p className="text-sm text-slate-500">
-            Generate an invite link to share. No email is sent yet—copy the link for testing.
-          </p>
-        </CardHeader>
+        <CardHeader
+          title="Invite by email"
+          subtitle="Generate an invite link to share. No email is sent yet—copy the link for testing."
+        />
         <CardContent className="space-y-4">
           <form onSubmit={handleCreateInvite} className="flex flex-wrap items-end gap-3">
             <div className="min-w-[200px] flex-1">
@@ -213,9 +211,7 @@ export default function TeamPage() {
 
       {/* Pending invites */}
       <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-[var(--dark)]">Pending invites</h2>
-        </CardHeader>
+        <CardHeader title="Pending invites" />
         <CardContent>
           {pendingInvites.length === 0 ? (
             <p className="text-sm text-slate-500">No pending invites.</p>
@@ -237,9 +233,7 @@ export default function TeamPage() {
 
       {/* Active members */}
       <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-[var(--dark)]">Active members</h2>
-        </CardHeader>
+        <CardHeader title="Active members" />
         <CardContent>
           {members.length === 0 ? (
             <p className="text-sm text-slate-500">No members yet.</p>

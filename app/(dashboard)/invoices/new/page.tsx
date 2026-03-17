@@ -42,12 +42,12 @@ function NewInvoiceForm() {
   useEffect(() => {
     if (!jobId) {
       setLoading(false);
-      setJob(null);
+      setJob(undefined);
       return;
     }
     getJobById(jobId)
       .then((j) => {
-        setJob(j ?? null);
+        setJob(j);
         if (j) {
           setSubtotal(j.price);
           setTotal(j.price);

@@ -223,12 +223,12 @@ export const mockJobs: Job[] = [
 
 // jobIds match Supabase seed job UUIDs so invoice relations resolve from DB
 export const mockInvoices: Invoice[] = [
-  { id: "inv-001", jobId: "30000000-0000-4000-8000-000000000002", amount: 185, status: "sent", dueDate: "2025-03-15" },
-  { id: "inv-002", jobId: "30000000-0000-4000-8000-000000000003", amount: 320, status: "sent", dueDate: "2025-03-12" },
-  { id: "inv-003", jobId: "30000000-0000-4000-8000-000000000004", amount: 285, status: "paid", dueDate: "2025-03-10" },
-  { id: "inv-004", jobId: "30000000-0000-4000-8000-000000000001", amount: 425, status: "paid", dueDate: "2025-03-08" },
-  { id: "inv-005", jobId: "30000000-0000-4000-8000-000000000005", amount: 650, status: "sent", dueDate: "2025-03-05" },
-  { id: "inv-006", jobId: "30000000-0000-4000-8000-000000000006", amount: 145, status: "paid", dueDate: "2025-03-03" },
-  { id: "inv-007", jobId: "30000000-0000-4000-8000-000000000007", amount: 890, status: "paid", dueDate: "2025-02-28" },
-  { id: "inv-008", jobId: "30000000-0000-4000-8000-000000000001", amount: 425, status: "draft", dueDate: "2025-03-20" },
+  { id: "inv-001", jobId: "30000000-0000-4000-8000-000000000002", customerId: "cust-001", invoiceNumber: "INV-2025-001", status: "sent", subtotal: 185, total: 185, createdAt: "2025-03-01T00:00:00Z", paidAt: null },
+  { id: "inv-002", jobId: "30000000-0000-4000-8000-000000000003", customerId: "cust-002", invoiceNumber: "INV-2025-002", status: "sent", subtotal: 320, total: 320, createdAt: "2025-03-01T00:00:00Z", paidAt: null },
+  { id: "inv-003", jobId: "30000000-0000-4000-8000-000000000004", customerId: "cust-003", invoiceNumber: "INV-2025-003", status: "paid", subtotal: 285, total: 285, createdAt: "2025-03-01T00:00:00Z", paidAt: "2025-03-10T00:00:00Z" },
+  { id: "inv-004", jobId: "30000000-0000-4000-8000-000000000001", customerId: "cust-001", invoiceNumber: "INV-2025-004", status: "paid", subtotal: 425, total: 425, createdAt: "2025-03-01T00:00:00Z", paidAt: "2025-03-08T00:00:00Z" },
+  { id: "inv-005", jobId: "30000000-0000-4000-8000-000000000005", customerId: "cust-002", invoiceNumber: "INV-2025-005", status: "sent", subtotal: 650, total: 650, createdAt: "2025-03-01T00:00:00Z", paidAt: null },
+  { id: "inv-006", jobId: "30000000-0000-4000-8000-000000000006", customerId: "cust-003", invoiceNumber: "INV-2025-006", status: "paid", subtotal: 145, total: 145, createdAt: "2025-03-01T00:00:00Z", paidAt: "2025-03-03T00:00:00Z" },
+  { id: "inv-007", jobId: "30000000-0000-4000-8000-000000000007", customerId: "cust-001", invoiceNumber: "INV-2025-007", status: "paid", subtotal: 890, total: 890, createdAt: "2025-03-01T00:00:00Z", paidAt: "2025-02-28T00:00:00Z" },
+  { id: "inv-008", jobId: "30000000-0000-4000-8000-000000000001", customerId: "cust-002", invoiceNumber: "INV-2025-008", status: "draft", subtotal: 425, total: 425, createdAt: "2025-03-01T00:00:00Z", paidAt: null },
 ];
