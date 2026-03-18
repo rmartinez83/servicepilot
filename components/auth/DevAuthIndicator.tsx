@@ -4,6 +4,8 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 /** Temporary dev indicator: shows authenticated email and current company id. Remove later. */
 export function DevAuthIndicator() {
+  if (process.env.NODE_ENV !== "development") return null;
+
   const { user, currentCompanyId } = useAuth();
   if (!user) return null;
 

@@ -22,6 +22,8 @@ type AuthContextValue = {
   currentCompanyId: string;
   companyIdFromMembership: string | null;
   hasCompanyMembership: boolean;
+  /** Role in primary company from RPC (e.g. admin, technician, owner). */
+  membershipRole: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshCompanyId: () => Promise<string | null>;
@@ -35,10 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [currentCompanyId, setCurrentCompanyIdState] = useState<string>(DEFAULT_COMPANY_ID);
   const [companyIdFromMembership, setCompanyIdFromMembership] = useState<string | null>(null);
+  const [membershipRole, setMembershipRole] = useState<string | null>(null);
 
   const resolveCompanyOnce = useCallback(async (): Promise<string | null> => {
-    const { companyId } = await getCurrentUserPrimaryCompany();
+    const { companyId, role } = await getCurrentUserPrimaryCompany();
     setCompanyIdFromMembership(companyId);
+    setMembershipRole(role ?? null);
     const resolved = companyId ?? DEFAULT_COMPANY_ID;
     setCurrentCompanyId(resolved);
     setCurrentCompanyIdState(resolved);
@@ -51,8 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (DEBUG) console.log("[AuthProvider] init start");
 
-    getSession()
-      .then(({ data }) => {
+    // Initial bootstrap: wait for BOTH auth session and primary company lookup
+    // before clearing the global loading state. This prevents the "finish setup"
+    // screen from flashing for fully registered users.
+    (async () => {
+      try {
+        const { data } = await getSession();
         const sess = data.session;
         setSession(sess);
         setUser(sess?.user ?? null);
@@ -60,14 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!sess?.user?.id) {
           if (DEBUG) console.log("[AuthProvider] no session");
           setCompanyIdFromMembership(null);
+          setMembershipRole(null);
           setCurrentCompanyId(null);
           setCurrentCompanyIdState(DEFAULT_COMPANY_ID);
           return;
         }
         if (DEBUG) console.log("[AuthProvider] session exists");
-        return resolveCompanyOnce();
-      })
-      .finally(() => setLoading(false));
+        await resolveCompanyOnce();
+      } finally {
+        setLoading(false);
+      }
+    })();
 
     const supabase = getSupabase();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, sess: Session | null) => {
@@ -76,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!sess?.user?.id) {
         setCompanyIdFromMembership(null);
+        setMembershipRole(null);
         setCurrentCompanyId(null);
         setCurrentCompanyIdState(DEFAULT_COMPANY_ID);
         return;
@@ -94,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await authSignOut();
     setCompanyIdFromMembership(null);
+    setMembershipRole(null);
     setCurrentCompanyId(null);
     setCurrentCompanyIdState(DEFAULT_COMPANY_ID);
   }, []);
@@ -110,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     currentCompanyId,
     companyIdFromMembership,
     hasCompanyMembership: companyIdFromMembership != null,
+    membershipRole,
     signIn,
     signOut,
     refreshCompanyId,

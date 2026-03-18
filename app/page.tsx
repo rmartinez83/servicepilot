@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { isTechnicianMembershipRole, isMobileTechViewport } from "@/lib/roles";
 import {
   Briefcase,
   Play,
@@ -20,14 +21,17 @@ const buttonSecondary =
 
 export default function LandingPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, membershipRole } = useAuth();
 
   useEffect(() => {
     if (loading) return;
-    if (user) {
+    if (!user) return;
+    if (isTechnicianMembershipRole(membershipRole) && isMobileTechViewport()) {
+      router.replace("/tech");
+    } else {
       router.replace("/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, loading, membershipRole, router]);
 
   if (loading) {
     return (
@@ -91,10 +95,10 @@ export default function LandingPage() {
                   14-day free trial · No credit card required
                 </p>
                 <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-tight">
-                  Run Your HVAC Business Without the Chaos
+                  See Who&apos;s Available. Schedule Jobs in Seconds.
                 </h1>
                 <p className="mt-4 text-lg text-slate-300">
-                  ServicePilot helps HVAC companies schedule jobs, manage technicians, and send invoices from one simple dashboard.
+                  Instantly see your technicians&apos; availability, book jobs in one click, and keep your entire schedule organized — without the back and forth.
                 </p>
                 <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:gap-4">
                   <Link
@@ -103,6 +107,7 @@ export default function LandingPage() {
                   >
                     Start Free Trial
                   </Link>
+                  {/* Demo temporarily disabled until flow is ready.
                   <a
                     href="#"
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-500/50 bg-white/5 px-5 text-base font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F172A]"
@@ -110,10 +115,28 @@ export default function LandingPage() {
                     <Play className="h-5 w-5" aria-hidden />
                     Watch Demo
                   </a>
+                  */}
                 </div>
-                <p className="mt-4 text-sm text-slate-400">
-                  Full access to job scheduling, technicians, and invoicing. Cancel anytime—no commitment.
-                </p>
+                <div className="mt-4 space-y-1.5 text-sm text-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                      ✓
+                    </span>
+                    <span>See real-time availability</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                      ✓
+                    </span>
+                    <span>Book jobs in one click</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                      ✓
+                    </span>
+                    <span>Keep your schedule organized</span>
+                  </div>
+                </div>
               </div>
               <div className="flex justify-center lg:justify-end">
                 <div className="w-full max-w-xl overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl shadow-black/20 ring-1 ring-white/10 backdrop-blur-sm">
@@ -233,18 +256,18 @@ export default function LandingPage() {
         <section id="pricing" className="bg-card-bg px-4 py-12 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-md">
             <h2 className="text-center text-2xl font-bold text-[var(--dark)] sm:text-3xl">
-              Simple Pricing for HVAC Companies
+              Simple, Transparent Pricing
             </h2>
             <p className="mt-3 text-center text-slate-600">
-              Start with a 14-day free trial. No credit card required.
+              Everything you need to schedule jobs, manage technicians, and keep your business organized.
             </p>
             <Card className="mt-10">
               <CardContent className="pt-6 text-center">
                 <p className="text-3xl font-bold text-[var(--dark)]">
-                  $50 <span className="text-base font-normal text-slate-500">/ month</span>
+                  $49 <span className="text-base font-normal text-slate-500">/ month</span>
                 </p>
                 <p className="mt-3 text-sm text-slate-600">
-                  No contract, no commitment. Cancel anytime.
+                  Cancel anytime. No contracts.
                 </p>
                 <div className="mt-8">
                   <Link href="/signup" className={`${buttonPrimary} block w-full text-center`}>
@@ -252,7 +275,7 @@ export default function LandingPage() {
                   </Link>
                 </div>
                 <p className="mt-3 text-xs text-slate-500">
-                  Full access during trial. No charge until the trial ends.
+                  Founding customer discounts available.
                 </p>
               </CardContent>
             </Card>

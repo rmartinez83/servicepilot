@@ -13,6 +13,7 @@ import {
   getTechnicians,
 } from "@/lib/data";
 import { useJobs } from "@/components/providers/JobsProvider";
+import { ensureDemoScheduleData } from "@/lib/demoScheduleSeed";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { withReturnTo } from "@/lib/returnTo";
@@ -199,6 +200,14 @@ export default function SchedulePage() {
     date: string;
     startTime: string;
   } | null>(null);
+
+  // Dev/demo only: lightly seed technicians, customers, and today's jobs when there is no data yet.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    ensureDemoScheduleData().catch(() => {
+      // best-effort only; ignore failures in demo helper
+    });
+  }, []);
 
   useEffect(() => {
     setScheduleTechnicianId((prev) => filterTechnicianId ?? prev ?? "");
@@ -597,13 +606,15 @@ export default function SchedulePage() {
       <Card>
         <CardHeader
           title="Technician availability"
-          subtitle={`${formatDate(referenceDateStr)} · Jobs and open slots; click an open slot to schedule`}
+          subtitle={`${formatDate(referenceDateStr)} · Next available highlighted; open slots schedule on click`}
         />
         <CardContent className="p-0">
           <div className="flex gap-3 overflow-x-auto px-4 pb-4 pt-1 sm:gap-4">
             {technicians.map((tech) => {
               const techJobs = jobsByTechnicianForSelectedDay.get(tech.id) ?? [];
               const openSlots = getOpenSlotsForDay(techJobs);
+              const nextAvailableStart =
+                openSlots.length > 0 ? openSlots[0] : null;
               const columnItems = buildColumnItems(techJobs, openSlots, timeSortKey);
               const isDropTarget = dropTarget === tech.id;
               return (
@@ -665,10 +676,34 @@ export default function SchedulePage() {
                               startTime: item.startTime,
                             })
                           }
-                          className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-emerald-300 bg-emerald-50/80 py-2.5 text-sm font-medium text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-100/80 hover:text-emerald-900"
+                          className={`flex w-full cursor-pointer flex-col items-stretch rounded-lg border py-2.5 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99] ${
+                            nextAvailableStart === item.startTime
+                              ? "border-2 border-emerald-500 bg-emerald-100/90 text-emerald-950 hover:bg-emerald-200/90"
+                              : "border border-dashed border-emerald-300 bg-emerald-50/80 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100/80 hover:text-emerald-900"
+                          }`}
                         >
-                          <CalendarPlus className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-                          Open · {formatScheduledTime(item.startTime)}
+                          {nextAvailableStart === item.startTime ? (
+                            <>
+                              <span className="px-3 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                                ⭐ Next Available
+                              </span>
+                              <span className="mt-1 flex items-center gap-2 px-3 text-sm font-semibold">
+                                <CalendarPlus className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
+                                {formatScheduledTime(item.startTime)}
+                                <span className="font-medium text-emerald-700">· + Schedule</span>
+                              </span>
+                            </>
+                          ) : (
+                            <span className="flex flex-col gap-0.5 px-3">
+                              <span className="flex items-center gap-2 text-sm font-medium">
+                                <CalendarPlus className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                                Open · {formatScheduledTime(item.startTime)}
+                              </span>
+                              <span className="pl-6 text-xs font-medium text-emerald-700">
+                                Click to schedule
+                              </span>
+                            </span>
+                          )}
                         </button>
                       )
                     )}

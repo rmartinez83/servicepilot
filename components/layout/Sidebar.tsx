@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { APP_NAME, SIDEBAR_NAV } from "@/lib/constants";
-import { Wrench } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { Smartphone, Wrench } from "lucide-react";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-[var(--border)] bg-card-bg lg:flex">
@@ -37,6 +39,18 @@ export function Sidebar() {
             </Link>
           );
         })}
+        {user ? (
+          <div className="mt-4 border-t border-[var(--border)] pt-3">
+            <Link
+              href="/tech"
+              className="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              <Smartphone className="h-5 w-5 shrink-0" aria-hidden />
+              Technician mobile view
+            </Link>
+            <p className="mt-1 px-3 text-xs text-slate-500">Same as /tech or /mobile</p>
+          </div>
+        ) : null}
       </nav>
     </aside>
   );

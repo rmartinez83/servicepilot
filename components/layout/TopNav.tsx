@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, Smartphone } from "lucide-react";
 import { MobileNavTrigger } from "./MobileNav";
 import { TrialStatusIndicator } from "@/components/auth/TrialStatusIndicator";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -23,6 +23,17 @@ export function TopNav() {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {user ? (
+          <Link
+            href="/tech"
+            aria-label="Technician mobile view"
+            title="Open technician mobile view (/tech)"
+            className="inline-flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-card-bg px-2 text-xs font-medium text-[var(--dark)] transition-colors hover:bg-slate-50 sm:min-w-0 sm:px-3 sm:text-sm"
+          >
+            <Smartphone className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className="hidden sm:inline">Technician mobile view</span>
+          </Link>
+        ) : null}
         <TrialStatusIndicator />
         <button
           type="button"

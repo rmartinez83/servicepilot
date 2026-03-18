@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { APP_NAME, SIDEBAR_NAV } from "@/lib/constants";
-import { Menu, Wrench, X } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { Menu, Smartphone, Wrench, X } from "lucide-react";
 
 export function MobileNavTrigger() {
   const [open, setOpen] = useState(false);
@@ -34,6 +35,7 @@ function MobileNavDrawer({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   // Slide-in: start off-screen then animate to visible
@@ -93,6 +95,16 @@ function MobileNavDrawer({
           </button>
         </div>
         <nav className="flex flex-col space-y-0.5 p-3">
+          {user ? (
+            <Link
+              href="/tech"
+              onClick={onClose}
+              className="mb-2 flex min-h-12 items-center gap-3 rounded-lg border border-primary/25 bg-primary/5 px-3 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+            >
+              <Smartphone className="h-5 w-5 shrink-0" aria-hidden />
+              <span>Technician mobile view</span>
+            </Link>
+          ) : null}
           {SIDEBAR_NAV.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
