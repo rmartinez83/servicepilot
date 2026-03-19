@@ -57,7 +57,7 @@ export default function LandingPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
               <Wrench className="h-5 w-5" />
             </div>
-            <span className="text-lg font-semibold">Sevoro</span>
+            <span className="text-lg font-semibold">Sevora</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-3">
             <a href="#features" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[var(--dark)] sm:block">
@@ -89,7 +89,7 @@ export default function LandingPage() {
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
                     <Wrench className="h-5 w-5" />
                   </div>
-                  <span className="text-sm font-semibold text-slate-200">Sevoro</span>
+                  <span className="text-sm font-semibold text-slate-200">Sevora</span>
                 </div>
                 <p className="mt-5 text-sm font-semibold uppercase tracking-wider text-[#93C5FD]">
                   14-day free trial · No credit card required · Set up in minutes
@@ -157,7 +157,7 @@ export default function LandingPage() {
                 <div className="w-full max-w-xl overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl shadow-black/20 ring-1 ring-white/10 backdrop-blur-sm">
                   <img
                     src="/dashboard-hero.png"
-                    alt="Sevoro dashboard showing jobs, schedule, and business metrics"
+                    alt="Sevora dashboard showing jobs, schedule, and business metrics"
                     className="w-full object-cover object-top"
                   />
                 </div>
@@ -257,7 +257,7 @@ export default function LandingPage() {
             <Card>
               <CardContent className="py-8">
                 <p className="text-center text-lg text-slate-700 italic">
-                  &ldquo;Sevoro simplified our dispatching and invoicing. Our techs love the mobile view.&rdquo;
+                  &ldquo;Sevora simplified our dispatching and invoicing. Our techs love the mobile view.&rdquo;
                 </p>
                 <p className="mt-4 text-center text-sm font-medium text-[var(--dark)]">
                   — HVAC Contractor
@@ -318,7 +318,7 @@ export default function LandingPage() {
       <footer className="border-t border-[var(--border)] py-6">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <p className="text-center text-sm text-slate-500">
-            © {new Date().getFullYear()} Sevoro. All rights reserved.
+            © {new Date().getFullYear()} Sevora. All rights reserved.
           </p>
         </div>
       </footer>

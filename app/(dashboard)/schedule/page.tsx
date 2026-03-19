@@ -14,6 +14,7 @@ import {
 } from "@/lib/data";
 import { useJobs } from "@/components/providers/JobsProvider";
 import { ensureDemoScheduleData } from "@/lib/demoScheduleSeed";
+import { seedGuestDemoData } from "@/lib/seedGuestDemoData";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { withReturnTo } from "@/lib/returnTo";
@@ -21,6 +22,7 @@ import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { Calendar, CalendarClock, CheckCircle, Clock, ExternalLink, Plus, Search, UserPlus, UserX, Wrench, CalendarPlus } from "lucide-react";
 import type { Job } from "@/lib/models";
 import type { Technician } from "@/lib/models";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 type DateFilter = "today" | "tomorrow" | "week";
 
@@ -184,6 +186,7 @@ export default function SchedulePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filterTechnicianId = searchParams.get("technicianId");
+  const { user } = useAuth();
   const { jobs, loading: jobsLoading, updateJob, addJob } = useJobs();
   const [customers, setCustomers] = useState<Awaited<ReturnType<typeof getCustomers>>>([]);
   const [allTechnicians, setAllTechnicians] = useState<Awaited<ReturnType<typeof getTechnicians>>>([]);
@@ -200,6 +203,16 @@ export default function SchedulePage() {
     date: string;
     startTime: string;
   } | null>(null);
+
+  const [seedingGuest, setSeedingGuest] = useState(false);
+  const [seedResult, setSeedResult] = useState<{
+    createdCustomers: number;
+    createdTechnicians: number;
+    createdJobs: number;
+    dateStart: string;
+    dateEnd: string;
+  } | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
 
   // Dev/demo only: lightly seed technicians, customers, and today's jobs when there is no data yet.
   useEffect(() => {
@@ -403,19 +416,61 @@ export default function SchedulePage() {
             View and manage technician schedules and appointments.
           </p>
         </div>
-        <Link
-          href={withReturnTo(
-            "/jobs/new",
-            filterTechnicianId ? `/schedule?technicianId=${filterTechnicianId}` : "/schedule"
-          )}
-          className="shrink-0"
-        >
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Schedule job
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {process.env.NODE_ENV === "development" &&
+          (user?.email ?? "").trim().toLowerCase() === "guest@gmail.com" ? (
+            <button
+              type="button"
+              onClick={async () => {
+                if (seedingGuest) return;
+                setSeedError(null);
+                setSeedResult(null);
+                setSeedingGuest(true);
+                try {
+                  const result = await seedGuestDemoData();
+                  setSeedResult(result);
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  setSeedError(msg);
+                } finally {
+                  setSeedingGuest(false);
+                }
+              }}
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-900 transition-colors hover:bg-emerald-100"
+              title="Seed Guest demo data (dev only)"
+            >
+              {seedingGuest ? "Seeding demo…" : "Seed Guest Demo Data"}
+            </button>
+          ) : null}
+
+          <Link
+            href={withReturnTo(
+              "/jobs/new",
+              filterTechnicianId ? `/schedule?technicianId=${filterTechnicianId}` : "/schedule"
+            )}
+          >
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Schedule job
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {(seedResult || seedError) && (
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm">
+          {seedResult ? (
+            <div className="text-slate-700">
+              Seeded Guest demo:{" "}
+              <strong>{seedResult.createdCustomers}</strong> customers,{" "}
+              <strong>{seedResult.createdTechnicians}</strong> technicians,{" "}
+              <strong>{seedResult.createdJobs}</strong> jobs · {seedResult.dateStart} → {seedResult.dateEnd}
+            </div>
+          ) : (
+            <div className="text-red-700">Guest demo seed failed: {seedError}</div>
+          )}
+        </div>
+      )}
 
       {/* Control bar: date + filters */}
       <div className="rounded-[10px] border border-[var(--border)] bg-card-bg p-4 shadow-sm">

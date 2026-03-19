@@ -121,7 +121,7 @@ export async function POST(request: Request) {
   if (process.env.RESEND_API_KEY) {
     const { error: emailError } = await resend.emails.send({
       from:
-        process.env.RESEND_FROM_EMAIL ?? "Sevoro <onboarding@resend.dev>",
+        process.env.RESEND_FROM_EMAIL ?? "Sevora <onboarding@resend.dev>",
       to: customerEmail,
       subject: `Invoice ${invoiceRow.invoice_number} from ${companyName}`,
       html: `

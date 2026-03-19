@@ -100,7 +100,7 @@ function AcceptContent() {
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
           <Wrench className="h-7 w-7" />
         </div>
-        <h1 className="mt-4 text-2xl font-bold text-[var(--dark)]">Sevoro</h1>
+        <h1 className="mt-4 text-2xl font-bold text-[var(--dark)]">Sevora</h1>
       </div>
       <div className="mt-8 w-full max-w-sm rounded-lg border border-[var(--border)] bg-card-bg p-6 shadow-md">
         <h2 className="text-lg font-semibold text-[var(--dark)]">You’re invited</h2>

@@ -153,7 +153,7 @@ export default function BillingPage() {
             <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4">
               <p className="text-sm font-medium text-amber-900">After your trial</p>
               <p className="mt-1 text-sm text-amber-800">
-                When your trial ends, you can start a paid subscription to keep using Sevoro. You’ll get full access to scheduling, technicians, and invoicing. No charge until you choose a plan.
+                When your trial ends, you can start a paid subscription to keep using Sevora. You’ll get full access to scheduling, technicians, and invoicing. No charge until you choose a plan.
               </p>
             </div>
           )}
@@ -162,7 +162,7 @@ export default function BillingPage() {
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-medium text-[var(--dark)]">Trial ended</p>
               <p className="mt-1 text-sm text-slate-600">
-                Start a subscription to continue using Sevoro.
+                Start a subscription to continue using Sevora.
               </p>
             </div>
           )}

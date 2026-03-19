@@ -68,7 +68,7 @@ export function DashboardGuard({ children }: { children: React.ReactNode }) {
         <div className="w-full max-w-sm rounded-lg border border-[var(--border)] bg-card-bg p-6 shadow-md">
           <h2 className="text-lg font-semibold text-[var(--dark)]">Finish setup</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Create your company to start using Sevoro.
+            Create your company to start using Sevora.
           </p>
           <form onSubmit={handleFinishSetup} className="mt-4 space-y-4">
             <div>

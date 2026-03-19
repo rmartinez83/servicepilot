@@ -2,13 +2,14 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { getTechnicianById, updateTechnician } from "@/lib/data";
+import { deleteTechnician, getTechnicianById, unassignJobsForTechnician, updateTechnician } from "@/lib/data";
 import type { Specialty } from "@/lib/models";
-import { ArrowLeft, Mail, Phone, User, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Mail, Phone, Trash2, User, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getReturnTo } from "@/lib/returnTo";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 const SPECIALTY_OPTIONS: { value: Specialty; label: string }[] = [
   { value: "HVAC", label: "HVAC" },
@@ -50,6 +51,7 @@ export default function EditTechnicianPage() {
   const returnTo = getReturnTo(searchParams);
   const id = typeof params.id === "string" ? params.id : "";
   const backHref = returnTo ?? (id ? `/technicians/${id}` : "/technicians");
+  const { membershipRole } = useAuth();
 
   const [name, setName] = useState("");
   const [specialty, setSpecialty] = useState<Specialty>("HVAC");
@@ -58,6 +60,9 @@ export default function EditTechnicianPage() {
   const [active, setActive] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -209,9 +214,106 @@ export default function EditTechnicianPage() {
                 {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
+
+            {/* Danger zone (admin) */}
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50/40 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium text-[var(--dark)]">Delete technician</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Existing jobs will be moved to <strong>Unassigned</strong>. Jobs will not be deleted.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={!id || deleting || !(membershipRole === "admin" || membershipRole === "owner")}
+                  onClick={() => {
+                    setDeleteError(null);
+                    setShowDeleteConfirm(true);
+                  }}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  title={
+                    membershipRole === "admin" || membershipRole === "owner"
+                      ? "Delete technician"
+                      : "Admins only"
+                  }
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Technician
+                </button>
+              </div>
+              {deleteError && <p className="mt-3 text-sm text-danger">{deleteError}</p>}
+              {!(membershipRole === "admin" || membershipRole === "owner") && (
+                <p className="mt-3 text-xs text-slate-500">Only admins can delete technicians.</p>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
+
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-tech-title"
+          onClick={() => !deleting && setShowDeleteConfirm(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-[10px] border border-[var(--border)] bg-card-bg p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-700">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 id="delete-tech-title" className="text-lg font-semibold text-[var(--dark)]">
+                  Are you sure you want to delete this technician?
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Existing jobs will be moved to Unassigned.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={deleting}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <button
+                type="button"
+                disabled={deleting || !id}
+                onClick={async () => {
+                  if (!id || deleting) return;
+                  setDeleteError(null);
+                  setDeleting(true);
+                  try {
+                    await unassignJobsForTechnician(id);
+                    const ok = await deleteTechnician(id);
+                    if (!ok) throw new Error("Delete failed: technician not found.");
+                    router.push("/technicians?deleted=1");
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    setDeleteError(msg);
+                  } finally {
+                    setDeleting(false);
+                    setShowDeleteConfirm(false);
+                  }
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete technician"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -177,6 +177,14 @@ export async function updateTechnician(id: string, input: db.TechnicianUpdateInp
   return db.updateTechnician(id, input);
 }
 
+export async function unassignJobsForTechnician(technicianId: string): Promise<number> {
+  return db.unassignJobsForTechnician(technicianId);
+}
+
+export async function deleteTechnician(technicianId: string): Promise<boolean> {
+  return db.deleteTechnician(technicianId);
+}
+
 // --- Invoices (Supabase-backed) ---
 
 export async function getInvoices(): Promise<Invoice[]> {

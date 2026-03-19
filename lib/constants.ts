@@ -12,7 +12,7 @@ import {
   Settings,
 } from "lucide-react";
 
-export const APP_NAME = "Sevoro";
+export const APP_NAME = "Sevora";
 
 export interface NavItem {
   label: string;

@@ -244,6 +244,32 @@ export async function fetchTechnicianById(id: string | null): Promise<Technician
   return mapTechnician(data as DbRow);
 }
 
+/** Unassign all jobs for a technician within current company (sets technician_id null). */
+export async function unassignJobsForTechnician(technicianId: string): Promise<number> {
+  if (!technicianId) return 0;
+  const { data, error } = await getSupabase()
+    .from("jobs")
+    .update({ technician_id: null })
+    .eq("company_id", getCurrentCompanyId())
+    .eq("technician_id", technicianId)
+    .select("id");
+  if (error) throw toError(error);
+  return toRowArray(data).length;
+}
+
+/** Delete a technician within current company. Returns true if a row was deleted. */
+export async function deleteTechnician(technicianId: string): Promise<boolean> {
+  if (!technicianId) return false;
+  const { data, error } = await getSupabase()
+    .from("technicians")
+    .delete()
+    .eq("company_id", getCurrentCompanyId())
+    .eq("id", technicianId)
+    .select("id");
+  if (error) throw toError(error);
+  return toRowArray(data).length > 0;
+}
+
 export async function fetchJobs(): Promise<Job[]> {
   const { data, error } = await getSupabase()
     .from("jobs")

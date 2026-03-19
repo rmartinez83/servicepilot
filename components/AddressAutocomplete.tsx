@@ -140,7 +140,7 @@ export function AddressAutocomplete({
     }
 
     // Ensure the Google dropdown isn't hidden behind other UI.
-    const styleId = "sevoro-google-places-zindex";
+    const styleId = "sevora-google-places-zindex";
     if (!document.getElementById(styleId)) {
       const style = document.createElement("style");
       style.id = styleId;
