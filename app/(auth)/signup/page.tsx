@@ -109,7 +109,7 @@ export default function SignupPage() {
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
           <Wrench className="h-7 w-7" />
         </div>
-        <h1 className="mt-4 text-2xl font-bold text-[var(--dark)]">ServicePilot</h1>
+        <h1 className="mt-4 text-2xl font-bold text-[var(--dark)]">Sevoro</h1>
         <p className="mt-2 text-sm text-slate-500">
           Start your free trial. No credit card required.
         </p>

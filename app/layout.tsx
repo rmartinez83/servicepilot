@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ServicePilot",
+  title: "Sevoro",
   description:
     "Manage customers, jobs, schedules, and invoices for HVAC, plumbing, electrical, and other service companies.",
   icons: { icon: "/favicon.ico" },

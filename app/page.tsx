@@ -57,7 +57,7 @@ export default function LandingPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
               <Wrench className="h-5 w-5" />
             </div>
-            <span className="text-lg font-semibold">ServicePilot</span>
+            <span className="text-lg font-semibold">Sevoro</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-3">
             <a href="#features" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[var(--dark)] sm:block">
@@ -89,16 +89,19 @@ export default function LandingPage() {
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
                     <Wrench className="h-5 w-5" />
                   </div>
-                  <span className="text-sm font-semibold text-slate-200">ServicePilot</span>
+                  <span className="text-sm font-semibold text-slate-200">Sevoro</span>
                 </div>
                 <p className="mt-5 text-sm font-semibold uppercase tracking-wider text-[#93C5FD]">
-                  14-day free trial · No credit card required
+                  14-day free trial · No credit card required · Set up in minutes
                 </p>
                 <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-tight">
-                  See Who&apos;s Available. Schedule Jobs in Seconds.
+                  Run Your Service Business From One Place
                 </h1>
                 <p className="mt-4 text-lg text-slate-300">
-                  Instantly see your technicians&apos; availability, book jobs in one click, and keep your entire schedule organized — without the back and forth.
+                  Manage customers, schedule jobs, assign technicians, and send invoices — all from one place.
+                </p>
+                <p className="mt-3 text-sm text-slate-400">
+                  A simple all-in-one CRM for HVAC and service businesses
                 </p>
                 <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:gap-4">
                   <Link
@@ -122,19 +125,31 @@ export default function LandingPage() {
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
                       ✓
                     </span>
-                    <span>See real-time availability</span>
+                    <span>Schedule jobs</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
                       ✓
                     </span>
-                    <span>Book jobs in one click</span>
+                    <span>Manage customers</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
                       ✓
                     </span>
-                    <span>Keep your schedule organized</span>
+                    <span>Assign technicians</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                      ✓
+                    </span>
+                    <span>Track work</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                      ✓
+                    </span>
+                    <span>Send invoices</span>
                   </div>
                 </div>
               </div>
@@ -142,7 +157,7 @@ export default function LandingPage() {
                 <div className="w-full max-w-xl overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl shadow-black/20 ring-1 ring-white/10 backdrop-blur-sm">
                   <img
                     src="/dashboard-hero.png"
-                    alt="ServicePilot dashboard showing jobs, schedule, and business metrics"
+                    alt="Sevoro dashboard showing jobs, schedule, and business metrics"
                     className="w-full object-cover object-top"
                   />
                 </div>
@@ -242,7 +257,7 @@ export default function LandingPage() {
             <Card>
               <CardContent className="py-8">
                 <p className="text-center text-lg text-slate-700 italic">
-                  &ldquo;ServicePilot simplified our dispatching and invoicing. Our techs love the mobile view.&rdquo;
+                  &ldquo;Sevoro simplified our dispatching and invoicing. Our techs love the mobile view.&rdquo;
                 </p>
                 <p className="mt-4 text-center text-sm font-medium text-[var(--dark)]">
                   — HVAC Contractor
@@ -285,9 +300,9 @@ export default function LandingPage() {
         {/* Final CTA - light blue */}
         <section id="cta" className="bg-[#EEF2FF] px-4 py-16 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-bold text-[var(--dark)] sm:text-3xl">
-              Start Running Your HVAC Business Smarter
-            </h2>
+              <h2 className="text-2xl font-bold text-[var(--dark)] sm:text-3xl">
+                Start Running Your Service Business Smarter
+              </h2>
             <p className="mt-3 text-slate-600">
               14-day free trial. No credit card required. Cancel anytime.
             </p>
@@ -303,7 +318,7 @@ export default function LandingPage() {
       <footer className="border-t border-[var(--border)] py-6">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <p className="text-center text-sm text-slate-500">
-            © {new Date().getFullYear()} ServicePilot. All rights reserved.
+            © {new Date().getFullYear()} Sevoro. All rights reserved.
           </p>
         </div>
       </footer>
