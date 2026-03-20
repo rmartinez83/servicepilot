@@ -4,6 +4,15 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export async function POST(request: Request) {
   let body: {
     invoiceId?: string;
@@ -50,7 +59,7 @@ export async function POST(request: Request) {
 
   const { data: invoiceRow, error: invError } = await supabase
     .from("invoices")
-    .select("id, invoice_number, status, total, company_id, job_id, customer_id")
+    .select("id, invoice_number, status, total, company_id, job_id, customer_id, created_at")
     .eq("id", invoiceId)
     .maybeSingle();
 
@@ -117,6 +126,20 @@ export async function POST(request: Request) {
     "http://localhost:3000";
   const invoiceUrl = `${baseUrl.replace(/\/$/, "")}/invoice/${invoiceId}`;
   const total = Number(invoiceRow.total) || 0;
+  const totalAmount = total.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const createdAtRaw =
+    invoiceRow && "created_at" in invoiceRow ? (invoiceRow as { created_at?: string | null }).created_at : null;
+  let createdAt = "—";
+  if (createdAtRaw) {
+    const d = new Date(String(createdAtRaw));
+    createdAt = Number.isFinite(d.getTime())
+      ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : String(createdAtRaw);
+  }
 
   if (process.env.RESEND_API_KEY) {
     const { error: emailError } = await resend.emails.send({
@@ -124,17 +147,66 @@ export async function POST(request: Request) {
         process.env.RESEND_FROM_EMAIL ?? "Sevora <onboarding@resend.dev>",
       to: customerEmail,
       subject: `Invoice ${invoiceRow.invoice_number} from ${companyName}`,
-      html: `
-        <p>Hi ${customerName},</p>
-        <p>You have received an invoice from ${companyName}.</p>
-        <ul>
-          <li><strong>Invoice number:</strong> ${invoiceRow.invoice_number}</li>
-          <li><strong>Job:</strong> ${jobTitle || "—"}</li>
-          <li><strong>Total:</strong> $${total.toLocaleString()}</li>
-        </ul>
-        <p><a href="${invoiceUrl}">View Invoice →</a></p>
-        <p>— ${companyName}</p>
-      `,
+      html: `<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>New Invoice</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:24px;">
+        <div style="margin-bottom:18px;">
+          <div style="font-size:24px;font-weight:800;color:#0f172a;line-height:1.2;">
+            ${escapeHtml(companyName)}
+          </div>
+          <div style="margin-top:6px;font-size:18px;font-weight:700;color:#2563eb;">
+            New Invoice
+          </div>
+        </div>
+
+        <div style="color:#334155;font-size:15px;line-height:1.6;">
+          <p style="margin:0 0 12px;">Hi ${escapeHtml(customerName)},</p>
+          <p style="margin:0 0 18px;">
+            Thanks for choosing ${escapeHtml(companyName)}. Your invoice is ready.
+          </p>
+
+          <div style="border:1px solid #e5e7eb;background:#f9fafb;border-radius:12px;padding:16px;margin:18px 0;">
+            <div style="margin:0 0 8px;color:#475569;font-size:14px;">
+              <div style="margin:0;"><strong style="color:#0f172a;">Invoice #:</strong> ${escapeHtml(invoiceRow.invoice_number)}</div>
+              <div style="margin:0;"><strong style="color:#0f172a;">Service:</strong> ${escapeHtml(jobTitle || "—")}</div>
+              <div style="margin:0;"><strong style="color:#0f172a;">Date:</strong> ${escapeHtml(createdAt)}</div>
+            </div>
+
+            <div style="padding-top:10px;border-top:1px solid #e5e7eb;margin-top:10px;">
+              <div style="font-size:13px;color:#64748b;margin-bottom:4px;"><strong>Amount Due</strong></div>
+              <div style="font-size:22px;font-weight:900;color:#0f172a;line-height:1.2;">
+                $${escapeHtml(totalAmount)}
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align:center;margin:22px 0 10px;">
+            <a
+              href="${escapeHtml(invoiceUrl)}"
+              style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;font-size:14px;"
+            >
+              View Invoice
+            </a>
+          </div>
+
+          <p style="margin:18px 0 0;color:#475569;">
+            If you have any questions, reply to this email.
+          </p>
+          <p style="margin:10px 0 0;color:#475569;font-weight:600;">
+            ${escapeHtml(companyName)}
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`,
     });
     if (emailError) {
       return NextResponse.json(

@@ -6,7 +6,7 @@ import { getJobById, getCustomerById, addInvoice } from "@/lib/data";
 import { ArrowLeft, Briefcase, DollarSign, FileText, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 function Field({
   label,
@@ -34,8 +34,7 @@ function NewInvoiceForm() {
   const jobId = searchParams.get("jobId");
   const [job, setJob] = useState<Awaited<ReturnType<typeof getJobById>>>(undefined);
   const [customerName, setCustomerName] = useState("");
-  const [subtotal, setSubtotal] = useState<number>(0);
-  const [total, setTotal] = useState<number>(0);
+  const [amountText, setAmountText] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -49,15 +48,23 @@ function NewInvoiceForm() {
       .then((j) => {
         setJob(j);
         if (j) {
-          setSubtotal(j.price);
-          setTotal(j.price);
           return getCustomerById(j.customerId).then((c) => setCustomerName(c?.name ?? "—"));
         }
       })
       .finally(() => setLoading(false));
   }, [jobId]);
 
-  const canSubmit = job && jobId && job.customerId && Number.isFinite(subtotal) && subtotal >= 0 && Number.isFinite(total) && total >= 0;
+  const amountValue = useMemo(() => {
+    const n = Number(amountText);
+    return Number.isFinite(n) ? n : NaN;
+  }, [amountText]);
+
+  const canSubmit =
+    job &&
+    jobId &&
+    job.customerId &&
+    Number.isFinite(amountValue) &&
+    amountValue > 0;
 
   if (loading) {
     return (
@@ -121,8 +128,8 @@ function NewInvoiceForm() {
                 const inv = await addInvoice({
                   jobId: job.id,
                   customerId: job.customerId,
-                  subtotal,
-                  total,
+                  subtotal: amountValue,
+                  total: amountValue,
                   status: "draft",
                 });
                 router.push(`/invoices/${inv.id}`);
@@ -144,28 +151,23 @@ function NewInvoiceForm() {
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Subtotal" icon={<DollarSign className="h-4 w-4" />}>
+              <Field label="Invoice Amount" icon={<DollarSign className="h-4 w-4" />}>
                 <input
                   type="number"
                   min={0}
                   step={0.01}
-                  value={subtotal}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    setSubtotal(Number.isFinite(v) ? v : 0);
-                    setTotal(Number.isFinite(v) ? v : 0);
+                  value={amountText}
+                  placeholder="0.00"
+                  onChange={(e) => setAmountText(e.target.value)}
+                  onBlur={() => {
+                    const n = Number(amountText);
+                    if (!Number.isFinite(n)) return;
+                    if (amountText.trim() === "") return;
+                    setAmountText(n.toFixed(2));
                   }}
                   className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </Field>
-              <Field label="Total" icon={<DollarSign className="h-4 w-4" />}>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={total}
-                  onChange={(e) => setTotal(Number(e.target.value) || 0)}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  aria-invalid={amountText.trim().length > 0 && (!Number.isFinite(amountValue) || amountValue <= 0)}
+                  required
                 />
               </Field>
             </div>

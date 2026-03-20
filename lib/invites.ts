@@ -126,3 +126,18 @@ export async function acceptInvite(token: string): Promise<{
   }
   return { ok: true, companyId: result.company_id };
 }
+
+/** Cancel a pending invite (sets status to 'cancelled'). Owner/admin only (RLS enforced). */
+export async function cancelInvite(
+  companyId: string,
+  inviteId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("company_invites")
+    .update({ status: "cancelled" })
+    .eq("company_id", companyId)
+    .eq("id", inviteId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}

@@ -8,7 +8,7 @@ import type { JobStatus } from "@/lib/models";
 import { JOB_STATUS_OPTIONS, useJobs } from "@/components/providers/JobsProvider";
 import { ArrowLeft, Calendar, Clock, DollarSign, FileText, User, Wrench } from "lucide-react";
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getReturnTo } from "@/lib/returnTo";
 
@@ -56,17 +56,22 @@ function NewJobForm() {
   const [scheduledDate, setScheduledDate] = useState("2025-03-13");
   const [scheduledTime, setScheduledTime] = useState("");
   const [status, setStatus] = useState<JobStatus>("scheduled");
-  const [price, setPrice] = useState<number>(295);
+  const [price, setPrice] = useState<string>("295");
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const priceValue = useMemo(() => {
+    const n = parseFloat(price || "0");
+    return Number.isFinite(n) ? n : NaN;
+  }, [price]);
 
   const canSubmit =
     loaded &&
     customerId &&
     title.trim().length > 0 &&
     scheduledDate &&
-    Number.isFinite(price) &&
-    price >= 0;
+    Number.isFinite(priceValue) &&
+    priceValue >= 0;
 
   return (
     <div className="space-y-6">
@@ -110,7 +115,7 @@ function NewJobForm() {
                   scheduledDate,
                   scheduledTime: scheduledTime.trim() || undefined,
                   status,
-                  price: Number(price),
+                  price: priceValue,
                 });
                 router.push(returnTo ?? "/jobs");
               } catch (e) {
@@ -209,11 +214,19 @@ function NewJobForm() {
 
             <Field label="Price" icon={<DollarSign className="h-4 w-4" />}>
               <input
-                type="number"
-                min={0}
-                step={1}
-                value={Number.isFinite(price) ? price : 0}
-                onChange={(e) => setPrice(Number(e.target.value))}
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={price}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^\d*\.?\d*$/.test(value)) setPrice(value);
+                }}
+                onBlur={() => {
+                  if (!price.trim()) return;
+                  const n = parseFloat(price);
+                  if (Number.isFinite(n)) setPrice(n.toFixed(2));
+                }}
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </Field>

@@ -95,25 +95,40 @@ export default function JobsPage() {
           : "—",
       };
     });
-    const parseDate = (s: string | undefined | null): number => {
-      const str = (s || "").trim().slice(0, 10);
-      const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(str);
-      if (!m) return 0;
-      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
-    };
-    const timeSortKey = (row: { scheduledTime?: string | null }) => {
-      const raw = (row.scheduledTime ?? "").trim();
-      return raw ? raw.replace(/\D/g, "").slice(0, 4).padEnd(4, "0") : "9999";
+
+    // Sort by actual scheduled datetime (scheduledDate + scheduledTime) descending.
+    // Jobs missing date or time are forced to the bottom.
+    const getScheduledDateTimeKey = (row: { scheduledDate?: string; scheduledTime?: string | null }) => {
+      const dateStr = (row.scheduledDate ?? "").trim().slice(0, 10);
+      const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+
+      if (!dateMatch) return null;
+
+      const timeStr = (row.scheduledTime ?? "").trim();
+      const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(timeStr);
+      if (!timeMatch) return null;
+
+      const year = Number(dateMatch[1]);
+      const monthIndex = Number(dateMatch[2]) - 1;
+      const day = Number(dateMatch[3]);
+      const hour = Math.min(23, Math.max(0, Number(timeMatch[1])));
+      const minute = Math.min(59, Math.max(0, Number(timeMatch[2])));
+
+      return new Date(year, monthIndex, day, hour, minute).getTime();
     };
 
     rows.sort((a, b) => {
-      const dateTsA = parseDate(a.scheduledDate);
-      const dateTsB = parseDate(b.scheduledDate);
-      if (dateTsA !== dateTsB) return dateTsB - dateTsA;
+      const keyA = getScheduledDateTimeKey(a);
+      const keyB = getScheduledDateTimeKey(b);
 
-      const tA = timeSortKey(a);
-      const tB = timeSortKey(b);
-      if (tA !== tB) return tA.localeCompare(tB);
+      // Null keys go last.
+      if (keyA == null && keyB == null) return b.id.localeCompare(a.id);
+      if (keyA == null) return 1;
+      if (keyB == null) return -1;
+
+      if (keyA !== keyB) return keyB - keyA;
+
+      // Deterministic tie-breaker for stable ordering.
       return b.id.localeCompare(a.id);
     });
     return rows;

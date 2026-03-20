@@ -187,6 +187,9 @@ export type CompanyMemberRow = {
   user_id: string;
   role: string;
   created_at: string;
+  /** Optional user info if provided by list_company_members_with_user_info() RPC. */
+  email?: string | null;
+  fullName?: string | null;
 };
 
 /** List all members of a company. Caller must be a member (RLS enforced). */
@@ -194,13 +197,72 @@ export async function listCompanyMembers(
   companyId: string
 ): Promise<{ members: CompanyMemberRow[]; error: Error | null }> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from("company_members")
-    .select("id, company_id, user_id, role, created_at")
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: true });
-  if (error) return { members: [], error: new Error(error.message) };
-  return { members: (data ?? []) as CompanyMemberRow[], error: null };
+  try {
+    const { data, error } = await supabase.rpc("list_company_members_with_user_info", {
+      p_company_id: companyId,
+    });
+    if (error) throw error;
+
+    const rows = (data ?? []) as unknown[];
+    const members: CompanyMemberRow[] = rows.map((row) => {
+      const r = row as Record<string, unknown>;
+      // RPC result should include: email + full_name (full name).
+      return {
+        id: String(r.id ?? ""),
+        company_id: String(r.company_id ?? ""),
+        user_id: String(r.user_id ?? ""),
+        role: String(r.role ?? ""),
+        created_at: String(r.created_at ?? ""),
+        email: r.email == null ? null : String(r.email),
+        fullName: r.full_name == null ? null : String(r.full_name),
+      };
+    });
+
+    return { members, error: null };
+  } catch (e) {
+    // Fallback for environments where the RPC hasn't been deployed yet.
+    const { data, error } = await supabase
+      .from("company_members")
+      .select("id, company_id, user_id, role, created_at")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: true });
+    if (error) return { members: [], error: new Error(error.message) };
+    return { members: (data ?? []) as CompanyMemberRow[], error: null };
+  }
+}
+
+export type TeamMemberRole = "owner" | "admin" | "technician";
+
+export async function updateCompanyMemberRole(
+  companyId: string,
+  memberUserId: string,
+  nextRole: TeamMemberRole
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("update_company_member_role", {
+    p_company_id: companyId,
+    p_user_id: memberUserId,
+    p_role: nextRole,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || typeof data !== "object") return { ok: false, error: "Unexpected response" };
+  const result = data as { ok?: boolean; error?: string };
+  return { ok: Boolean(result.ok), error: result.error };
+}
+
+export async function removeCompanyMember(
+  companyId: string,
+  memberUserId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("remove_company_member", {
+    p_company_id: companyId,
+    p_user_id: memberUserId,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || typeof data !== "object") return { ok: false, error: "Unexpected response" };
+  const result = data as { ok?: boolean; error?: string };
+  return { ok: Boolean(result.ok), error: result.error };
 }
 
 /**

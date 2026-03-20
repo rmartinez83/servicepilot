@@ -9,7 +9,7 @@ import { ArrowLeft, Calendar, Clock, DollarSign, FileText, Wrench } from "lucide
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getReturnTo } from "@/lib/returnTo";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function Field({
   label,
@@ -54,7 +54,7 @@ export default function EditJobPage() {
   const [technicianId, setTechnicianId] = useState<string | "unassigned">("unassigned");
   const [status, setStatus] = useState<JobStatus>("scheduled");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState<number>(0);
+  const [price, setPrice] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -68,18 +68,23 @@ export default function EditJobPage() {
         setTechnicianId(j.technicianId ?? "unassigned");
         setStatus(j.status);
         setDescription(j.description ?? "");
-        setPrice(Number(j.price) || 0);
+        setPrice(j.price != null ? String(j.price) : "");
       }
       setLoaded(true);
     });
   }, [id]);
 
+  const priceValue = useMemo(() => {
+    const n = parseFloat(price || "0");
+    return Number.isFinite(n) ? n : NaN;
+  }, [price]);
+
   const canSubmit =
     loaded &&
     job &&
     scheduledDate &&
-    Number.isFinite(price) &&
-    price >= 0;
+    Number.isFinite(priceValue) &&
+    priceValue >= 0;
 
   if (!loaded || !job) {
     return (
@@ -131,7 +136,7 @@ export default function EditJobPage() {
                   technicianId: technicianId === "unassigned" ? null : technicianId,
                   status,
                   description: description.trim(),
-                  price: Number(price),
+                  price: priceValue,
                 });
                 router.push(returnTo ?? `/jobs/${id}`);
               } finally {
@@ -198,11 +203,20 @@ export default function EditJobPage() {
 
             <Field label="Price" icon={<DollarSign className="h-4 w-4" />}>
               <input
-                type="number"
-                min={0}
-                step={1}
-                value={Number.isFinite(price) ? price : 0}
-                onChange={(e) => setPrice(Number(e.target.value))}
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={price}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^\d*\.?\d*$/.test(value)) setPrice(value);
+                }}
+                onBlur={() => {
+                  if (!price.trim()) return;
+                  const n = parseFloat(price);
+                  if (!Number.isFinite(n)) return;
+                  setPrice(n.toFixed(2));
+                }}
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </Field>

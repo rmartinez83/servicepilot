@@ -10,8 +10,12 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
+import { getCurrentCompanyId } from "@/lib/db";
+
+const DEBUG = typeof process !== "undefined" && process.env.NODE_ENV === "development";
 
 type NewJobInput = Omit<Job, "id">;
 
@@ -30,20 +34,32 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refetchSeq = useRef(0);
 
   const refetch = useCallback(async () => {
+    const seq = ++refetchSeq.current;
     setLoading(true);
     setError(null);
     try {
+      if (DEBUG) {
+        console.log("[JobsProvider] refetch start", {
+          seq,
+          currentCompanyId: getCurrentCompanyId(),
+        });
+      }
       const list = await getJobs();
-      setJobs(Array.isArray(list) ? list : []);
+      if (seq === refetchSeq.current) {
+        setJobs(Array.isArray(list) ? list : []);
+      }
     } catch (e) {
       const message =
         e instanceof Error ? e.message : typeof e === "string" ? e : "Failed to load jobs";
-      setError(message);
-      setJobs([]);
+      if (seq === refetchSeq.current) {
+        setError(message);
+        setJobs([]);
+      }
     } finally {
-      setLoading(false);
+      if (seq === refetchSeq.current) setLoading(false);
     }
   }, []);
 
@@ -54,6 +70,24 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const addJob = useCallback(
     async (input: NewJobInput): Promise<Job> => {
       const job = await insertJob(input);
+      if (DEBUG) {
+        // Helps confirm the inserted row and tenant company_id we wrote to.
+        console.log("[JobsProvider] insertJob ok", {
+          currentCompanyId: getCurrentCompanyId(),
+          input,
+          createdJob: job,
+        });
+      }
+      // Optimistic insert so the list updates immediately even if refetch races.
+      setJobs((prev) => {
+        const idx = prev.findIndex((j) => j.id === job.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = job;
+          return next;
+        }
+        return [job, ...prev];
+      });
       await refetch();
       return job;
     },
